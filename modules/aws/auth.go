@@ -8,6 +8,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/credentials/stscreds"
+	"github.com/aws/aws-sdk-go/aws/endpoints"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/iam"
 	"github.com/aws/aws-sdk-go/service/sts"
@@ -30,7 +31,7 @@ func NewAuthenticatedSession(region string) (*session.Session, error) {
 
 // NewAuthenticatedSessionFromDefaultCredentials gets an AWS Session, checking that the user has credentials properly configured in their environment.
 func NewAuthenticatedSessionFromDefaultCredentials(region string) (*session.Session, error) {
-	sess, err := session.NewSession(aws.NewConfig().WithRegion(region))
+	sess, err := getNewSession(aws.NewConfig().WithRegion(region))
 	if err != nil {
 		return nil, err
 	}
@@ -61,7 +62,7 @@ func NewAuthenticatedSessionFromRole(region string, roleARN string) (*session.Se
 // CreateAwsSessionFromRole returns a new AWS session after assuming the role
 // whose ARN is provided in roleARN.
 func CreateAwsSessionFromRole(region string, roleARN string) (*session.Session, error) {
-	sess, err := session.NewSession(aws.NewConfig().WithRegion(region))
+	sess, err := getNewSession(aws.NewConfig().WithRegion(region))
 	if err != nil {
 		return nil, err
 	}
@@ -103,7 +104,7 @@ func CreateAwsSessionWithMfa(region string, stsClient *sts.STS, mfaDevice *iam.V
 	sessionToken := *output.Credentials.SessionToken
 
 	creds := CreateAwsCredentialsWithSessionToken(accessKeyID, secretAccessKey, sessionToken)
-	return session.NewSession(aws.NewConfig().WithRegion(region).WithCredentials(creds))
+	return getNewSession(aws.NewConfig().WithRegion(region).WithCredentials(creds))
 }
 
 // CreateAwsCredentials creates an AWS Credentials configuration with specific AWS credentials.
@@ -153,3 +154,27 @@ type CredentialsError struct {
 func (err CredentialsError) Error() string {
 	return fmt.Sprintf("Error finding AWS credentials. Did you set the AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY environment variables or configure an AWS profile? Underlying error: %v", err.UnderlyingErr)
 }
+
+// The goal of this function is handle the aws custom endpoint configuration
+// focus to use any tool (i.e: localstack) to allow us do tests locally or isolated
+func getNewSession(config *aws.Config) (*session.Session, error) {
+
+	if HasAwsCustomEndPoints() {
+		config.WithS3ForcePathStyle(true).WithEndpointResolver(endpoints.ResolverFunc(endPointsCustomResolver))
+	}
+
+	return session.NewSession(config)
+}
+
+func endPointsCustomResolver(service, region string, optionalFunctions ...func(*endpoints.Options)) (endpoints.ResolvedEndpoint, error) {
+	customServiceEndpoint, endpointShouldBeOverride := EndpointShouldBeOverride(service)
+	if endpointShouldBeOverride {
+		return endpoints.ResolvedEndpoint{
+			URL:           customServiceEndpoint,
+			SigningRegion: region,
+		}, nil
+	}
+
+	return endpoints.DefaultResolver().EndpointFor(service, region, optionalFunctions...)
+}
+
