@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/gruntwork-io/terratest/modules/files"
+	"github.com/gruntwork-io/terratest/modules/logger"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -70,9 +71,9 @@ func TestInitPluginDir(t *testing.T) {
 	require.Error(t, err)
 
 	initializedPluginDir := initializePluginsFolder + "/.terraform/plugins"
-	files.CopyFolderContents(initializedPluginDir, pluginDir)
+	logger.Logf(t, "Copying plugins from %s to %s", initializedPluginDir, pluginDir)
+	require.NoError(t, files.CopyFolderContents(initializedPluginDir, pluginDir))
 
 	initOutput := Init(t, terraformOptionsPluginDir)
-
 	assert.Contains(t, initOutput, "(unauthenticated)")
 }
