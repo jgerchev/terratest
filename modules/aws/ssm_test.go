@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/gruntwork-io/terratest/modules/logger"
-	"github.com/gruntwork-io/terratest/modules/random"
+	"github.com/jgerchev/terratest/modules/logger"
+	"github.com/jgerchev/terratest/modules/random"
 	"github.com/stretchr/testify/assert"
 )
 

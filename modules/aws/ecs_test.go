@@ -5,7 +5,7 @@ import (
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/ecs"
-	"github.com/gruntwork-io/terratest/modules/random"
+	"github.com/jgerchev/terratest/modules/random"
 	"github.com/stretchr/testify/assert"
 )
 
